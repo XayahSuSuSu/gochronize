@@ -16,10 +16,11 @@ func usage() {
 }
 
 var (
-	help    bool
-	version bool
-	user    string
-	repo    string
+	help      bool
+	version   bool
+	user      string
+	repo      string
+	proxyHttp string
 )
 
 func init() {
@@ -27,11 +28,28 @@ func init() {
 	flag.BoolVar(&version, "version", false, "Print the version.")
 	flag.StringVar(&user, "user", "", "The target user to get synchronized.")
 	flag.StringVar(&repo, "repo", "", "The target repo name to get synchronized.")
+	flag.StringVar(&proxyHttp, "proxy-http", "", "The http proxy url to be used.")
 	flag.Usage = usage
 }
 
 func main() {
 	flag.Parse()
+
+	if user != "" && repo != "" {
+		release := util.GetRelease(user, repo, proxyHttp)
+		if release != nil {
+			for _, asset := range release.Assets {
+				url := asset.BrowserDownloadURL
+				name := asset.Name
+				fmt.Printf("Download: %s\n", name)
+				err := util.Download(url, name, proxyHttp)
+				if err != nil {
+					fmt.Println(err)
+				}
+				fmt.Println("")
+			}
+		}
+	}
 
 	if help {
 		flag.Usage()
