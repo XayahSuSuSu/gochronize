@@ -30,7 +30,7 @@ func getHttpClient(proxyHttp string) (*http.Client, error) {
 	return &client, nil
 }
 
-func GetRelease(user, repo, proxyHttp string) *Release {
+func GetLatestRelease(user, repo, proxyHttp string) *Release {
 	api := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", user, repo)
 	client, err := getHttpClient(proxyHttp)
 	if err != nil {
@@ -39,7 +39,7 @@ func GetRelease(user, repo, proxyHttp string) *Release {
 
 	resp, err := client.Get(api)
 	if err != nil {
-		fmt.Printf("Failed to get: %s.\n", api)
+		fmt.Printf("Failed to get: %s, %s.\n", api, err.Error())
 		return nil
 	}
 	defer resp.Body.Close()
@@ -52,7 +52,7 @@ func GetRelease(user, repo, proxyHttp string) *Release {
 	var release Release
 	err = json.NewDecoder(resp.Body).Decode(&release)
 	if err != nil {
-		fmt.Println("Failed to parse release body.")
+		fmt.Printf("Failed to parse release body: %s.", err.Error())
 		return nil
 	}
 
