@@ -33,7 +33,15 @@ func ParseArgs(args Args) int {
 			fmt.Printf("********************************************\n")
 
 			// The target local path to get sync with
-			dstDir := fmt.Sprintf("%s/%s", "repo", target.Repo)
+			repoDir := target.Repo
+			rootDir := target.RootDir
+			if target.RepoDir != "" {
+				repoDir = target.RepoDir
+			}
+			if rootDir == "" {
+				rootDir = "."
+			}
+			dstDir := fmt.Sprintf("%s/%s", rootDir, repoDir)
 
 			switch target.Sync {
 			case SyncLatestRelease:

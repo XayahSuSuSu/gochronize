@@ -7,9 +7,11 @@ import (
 )
 
 type Target struct {
-	User string `yaml:"user"`
-	Repo string `yaml:"repo"`
-	Sync string `yaml:"sync"`
+	User    string `yaml:"user"`
+	Repo    string `yaml:"repo"`
+	Sync    string `yaml:"sync"`
+	RootDir string `yaml:"root_dir"`
+	RepoDir string `yaml:"repo_dir"`
 }
 
 type Config struct {

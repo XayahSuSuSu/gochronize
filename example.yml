@@ -1,4 +1,4 @@
-proxy_http: "http://127.0.0.1:20171" # Proxy address, support http/https. Use no proxy if left with ""
+proxy_http: "http://127.0.0.1:20171" # Proxy address, support http/https. Use no proxy if left with "".
 timeout: 30
 retries: 3
 
@@ -7,3 +7,5 @@ targets:
   - user: "XayahSuSuSu"
     repo: "Android-DataBackup"
     sync: "all" # "latest", "latest_release", "all" or specified tag name.
+    root_dir: "./repos" # Root dir path, choose current dir as root if left with "".
+    repo_dir: "data_backup" # Repo dir name, use repo name if left with "".
