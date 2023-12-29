@@ -2,9 +2,10 @@ package util
 
 const (
 	Success         = 0
-	ErrorIo         = 1
-	ErrorDownload   = 2
-	ErrorUnknownCmd = 3
+	Error           = 1
+	ErrorIO         = 2
+	ErrorDownload   = 3
+	ErrorUnknownCmd = 4
 )
 
 const (

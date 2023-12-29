@@ -1,7 +1,9 @@
 proxy_http: "http://127.0.0.1:20171" # Proxy address, support http/https. Use no proxy if left with ""
+timeout: 30
+retries: 3
 
 targets:
   # https://github.com/XayahSuSuSu/Android-DataBackup
   - user: "XayahSuSuSu"
     repo: "Android-DataBackup"
-    sync: "latest" # "latest", "latest_release", "all" or specified tag name.
+    sync: "all" # "latest", "latest_release", "all" or specified tag name.

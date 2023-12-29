@@ -3,6 +3,7 @@ package util
 import (
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 )
 
@@ -13,61 +14,49 @@ func ParseArgs(args Args) int {
 		// Parse config
 		config, err := ReadFromConfig(args.Config)
 		if err != nil {
-			fmt.Printf("Failed to read from config: %s.\n", err.Error())
-			return ErrorIo
+			return ErrorIO
+		}
+
+		// Get http client
+		httpClient, err := GetHttpClient(config.ProxyHttp, config.Timeout)
+		if err != nil {
+			return Error
 		}
 
 		// Download for each config
 		exitCode := Success
 		for _, target := range config.Targets {
-			fmt.Printf("Current user: %s, repo: %s, sync: %s.\n", target.User, target.Repo, target.Sync)
+			fmt.Printf("********************************************\n")
+			fmt.Printf("* user: %s\n", target.User)
+			fmt.Printf("* repo: %s\n", target.Repo)
+			fmt.Printf("* sync: %s\n", target.Sync)
+			fmt.Printf("********************************************\n")
+
+			// The target local path to get sync with
+			dstDir := fmt.Sprintf("%s/%s", "repo", target.Repo)
+
 			switch target.Sync {
 			case SyncLatestRelease:
-				err := downloadLatest(target.User, target.Repo, config.ProxyHttp, fmt.Sprintf("%s/%s", "repo", target.Repo))
+				err := syncLatestRelease(httpClient, target.User, target.Repo, dstDir, config.Retries)
 				if err != nil {
-					fmt.Printf("Failed to download latest release: %s.\n", err.Error())
 					exitCode = ErrorDownload
 					continue
 				}
 			case SyncLatest:
-				releases, _ := GetRelease(target.User, target.Repo, config.ProxyHttp, 1)
-				if len(releases) >= 1 {
-					err := downloadRelease(&releases[0], config.ProxyHttp, fmt.Sprintf("%s/%s", "repo", target.Repo))
-					if err != nil {
-						fmt.Printf("Failed to download latest: %s.\n", err.Error())
-						exitCode = ErrorDownload
-						continue
-					}
-				} else {
-					fmt.Printf("There's nothing to download.")
+				err := syncLatest(httpClient, target.User, target.Repo, dstDir, config.Retries)
+				if err != nil {
 					exitCode = ErrorDownload
 					continue
 				}
 			case SyncAll:
-				currentPage := 1
-				for currentPage != -1 {
-					fmt.Printf("Current page: %d.\n", currentPage)
-					var releases []Release
-					releases, currentPage = GetRelease(target.User, target.Repo, config.ProxyHttp, currentPage)
-					if len(releases) >= 1 {
-						for _, release := range releases {
-							err := downloadRelease(&release, config.ProxyHttp, fmt.Sprintf("%s/%s", "repo", target.Repo))
-							if err != nil {
-								fmt.Printf("Failed to download latest: %s.\n", err.Error())
-								exitCode = ErrorDownload
-								continue
-							}
-						}
-					} else {
-						fmt.Printf("There's nothing to download.")
-						exitCode = ErrorDownload
-						continue
-					}
+				err := syncAll(httpClient, target.User, target.Repo, dstDir, config.Retries)
+				if err != nil {
+					exitCode = ErrorDownload
+					continue
 				}
 			default:
-				err := downloadByTag(target.User, target.Repo, target.Sync, config.ProxyHttp, fmt.Sprintf("%s/%s", "repo", target.Repo))
+				err := syncByTag(httpClient, target.User, target.Repo, target.Sync, dstDir, config.Retries)
 				if err != nil {
-					fmt.Printf("Failed to download release: %s.\n", err.Error())
 					exitCode = ErrorDownload
 					continue
 				}
@@ -92,25 +81,64 @@ func ParseArgs(args Args) int {
 	return Success
 }
 
-func downloadLatest(user, repo, proxyHttp, dstDir string) error {
-	latestRelease := GetLatestRelease(user, repo, proxyHttp)
-	err := downloadRelease(latestRelease, proxyHttp, dstDir)
+func syncLatestRelease(client *http.Client, user, repo, dstDir string, retries int) error {
+	latestRelease := GetLatestRelease(client, user, repo)
+	err := downloadRelease(client, latestRelease, dstDir, retries)
 	return err
 }
 
-func downloadByTag(user, repo, tag, proxyHttp, dstDir string) error {
-	latestRelease := GetReleaseByTag(user, repo, tag, proxyHttp)
+func syncLatest(client *http.Client, user, repo, dstDir string, retries int) error {
+	releases, _ := GetRelease(client, user, repo, 1)
+	if len(releases) >= 1 {
+		err := downloadRelease(client, &releases[0], dstDir, retries)
+		if err != nil {
+			return err
+		}
+	} else {
+		fmt.Printf("* err: There's nothing to download.\n")
+		return fmt.Errorf("")
+	}
+	return nil
+}
+
+func syncAll(client *http.Client, user, repo, dstDir string, retries int) error {
+	var mErr error = nil
+	currentPage := 1
+	for currentPage != -1 {
+		fmt.Printf("* page: %d\n", currentPage)
+		var releases []Release
+		releases, currentPage = GetRelease(client, user, repo, currentPage)
+		if len(releases) >= 1 {
+			for _, release := range releases {
+				err := downloadRelease(client, &release, dstDir, retries)
+				if err != nil {
+					mErr = err
+				}
+			}
+		} else {
+			fmt.Printf("* err: There's nothing to download.\n")
+			mErr = fmt.Errorf("")
+		}
+	}
+	return mErr
+}
+
+func syncByTag(client *http.Client, user, repo, tag, dstDir string, retries int) error {
+	latestRelease := GetReleaseByTag(client, user, repo, tag)
 	var err error
 	if latestRelease != nil {
-		err = downloadRelease(latestRelease, proxyHttp, dstDir)
+		err = downloadRelease(client, latestRelease, dstDir, retries)
 	} else {
 		err = fmt.Errorf("failed to get the release by tag: %s", tag)
 	}
 	return err
 }
 
-func downloadRelease(release *Release, proxyHttp, dstDir string) error {
-	fmt.Printf("Current release: %s, tag: %s.\n", release.Name, release.TagName)
+func downloadRelease(client *http.Client, release *Release, dstDir string, retries int) error {
+	fmt.Printf("********************************************\n")
+	fmt.Printf("* release: %s\n", release.Name)
+	fmt.Printf("* tag: %s\n", release.TagName)
+	println("*")
 
 	err := os.MkdirAll(dstDir, os.ModePerm)
 	if err != nil {
@@ -119,7 +147,7 @@ func downloadRelease(release *Release, proxyHttp, dstDir string) error {
 
 	if release != nil {
 		dstTagDir := fmt.Sprintf("%s/%s", dstDir, release.TagName)
-		fmt.Printf("Tring to create: %s.\n", dstTagDir)
+		fmt.Printf("* info: Tring to create: %s.\n", dstTagDir)
 		err := os.MkdirAll(dstTagDir, os.ModePerm)
 		if err != nil {
 			return err
@@ -128,16 +156,26 @@ func downloadRelease(release *Release, proxyHttp, dstDir string) error {
 		for _, asset := range release.Assets {
 			url := asset.BrowserDownloadURL
 			name := asset.Name
-			fmt.Printf("Download: %s.\n", name)
-			err := Download(url, fmt.Sprintf("%s/%s", dstTagDir, name), proxyHttp)
-			if err != nil {
-				fmt.Println(err)
+
+			count := retries
+			for count > 0 {
+				fmt.Printf("* info: Download: %s.\n", name)
+				err := Download(client, url, fmt.Sprintf("%s/%s", dstTagDir, name))
+				if err != nil {
+					fmt.Println(err)
+					fmt.Printf("* info: Retry: %d\n", retries-count+1)
+					count--
+				} else {
+					break
+				}
 			}
-			fmt.Println()
+
+			fmt.Println("*")
 		}
 	} else {
 		return fmt.Errorf("failed to get the latest release")
 	}
 
+	fmt.Printf("********************************************\n")
 	return nil
 }
