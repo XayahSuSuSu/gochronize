@@ -28,15 +28,6 @@ func ParseArgs(args Args) int {
 			}
 		}
 		return exitCode
-	} else if args.User != "" && args.Repo != "" {
-		// Cmd mode
-
-		// Download directly
-		err := downloadLatest(args.User, args.Repo, args.ProxyHttp, fmt.Sprintf("%s/%s", "repo", args.Repo))
-		if err != nil {
-			fmt.Printf("Failed to downloadLatest: %s.\n", err.Error())
-			return ErrorDownload
-		}
 	} else if args.Version {
 		// Print the version
 

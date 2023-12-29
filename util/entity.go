@@ -8,12 +8,9 @@ const (
 )
 
 type Args struct {
-	Help      bool
-	Version   bool
-	User      string
-	Repo      string
-	ProxyHttp string
-	Config    string
+	Help    bool
+	Version bool
+	Config  string
 }
 
 type Release struct {
