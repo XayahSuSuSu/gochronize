@@ -4,4 +4,4 @@ targets:
   # https://github.com/XayahSuSuSu/Android-DataBackup
   - user: "XayahSuSuSu"
     repo: "Android-DataBackup"
-  
+    sync: "latest" # "latest", "latest_release", "all" or specified tag name.

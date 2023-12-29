@@ -7,6 +7,12 @@ const (
 	ErrorUnknownCmd = 3
 )
 
+const (
+	SyncLatest        = "latest"
+	SyncLatestRelease = "latest_release"
+	SyncAll           = "all"
+)
+
 type Args struct {
 	Help    bool
 	Version bool

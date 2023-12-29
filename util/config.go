@@ -8,6 +8,7 @@ import (
 type Target struct {
 	User string `yaml:"user"`
 	Repo string `yaml:"repo"`
+	Sync string `yaml:"sync"`
 }
 
 type Config struct {
