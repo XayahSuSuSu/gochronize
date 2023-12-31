@@ -13,13 +13,13 @@ import (
 	"time"
 )
 
-func GetHttpClient(proxyHttp string, timeout int) (*http.Client, error) {
+func GetHttpClient(proxyHttp string, timeout int) *http.Client {
 	var client http.Client
 	if proxyHttp != "" {
 		proxy, err := url.Parse(proxyHttp)
 		if err != nil {
-			fmt.Printf("Failed to parse proxy: %s.\n", proxyHttp)
-			return nil, err
+			Fprintfln("Failed to parse proxy: %s, %v", proxyHttp, err)
+			os.Exit(Error)
 		}
 		client = http.Client{
 			Timeout: time.Duration(timeout) * time.Second,
@@ -32,7 +32,7 @@ func GetHttpClient(proxyHttp string, timeout int) (*http.Client, error) {
 			Timeout: time.Duration(timeout) * time.Second,
 		}
 	}
-	return &client, nil
+	return &client
 }
 
 func GetRelease(client *http.Client, user, repo string, page int) ([]Release, int) {
@@ -40,13 +40,13 @@ func GetRelease(client *http.Client, user, repo string, page int) ([]Release, in
 
 	resp, err := client.Get(api)
 	if err != nil {
-		fmt.Printf("* err: Failed to get: %s, %s.\n", api, err.Error())
+		Fprintfln("* err: Failed to get: %s, %v", api, err)
 		return nil, -1
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("* err: Failed to access, status code: %d.\n", resp.StatusCode)
+		Fprintfln("* err: Failed to access, status code: %d.", resp.StatusCode)
 		return nil, -1
 	}
 
@@ -66,7 +66,7 @@ func GetRelease(client *http.Client, user, repo string, page int) ([]Release, in
 	var releases []Release
 	err = json.NewDecoder(resp.Body).Decode(&releases)
 	if err != nil {
-		fmt.Printf("* err: Failed to parse release body: %s.", err.Error())
+		Fprintfln("* err: Failed to parse release body: %v", err)
 		return nil, -1
 	}
 
@@ -78,20 +78,20 @@ func GetLatestRelease(client *http.Client, user, repo string) *Release {
 
 	resp, err := client.Get(api)
 	if err != nil {
-		fmt.Printf("* err: Failed to get: %s, %s.\n", api, err.Error())
+		Fprintfln("* err: Failed to get: %s, %v", api, err)
 		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("* err: Failed to access, status code: %d.\n", resp.StatusCode)
+		Fprintfln("* err: Failed to access, status code: %d.", resp.StatusCode)
 		return nil
 	}
 
 	var release Release
 	err = json.NewDecoder(resp.Body).Decode(&release)
 	if err != nil {
-		fmt.Printf("* err: Failed to parse release body: %s.", err.Error())
+		Fprintfln("* err: Failed to parse release body: %v", err)
 		return nil
 	}
 
@@ -103,23 +103,23 @@ func GetReleaseByTag(client *http.Client, user, repo, tag string) *Release {
 
 	resp, err := client.Get(api)
 	if err != nil {
-		fmt.Printf("* err: Failed to get: %s, %s.\n", api, err.Error())
+		Fprintfln("* err: Failed to get: %s, %v", api, err)
 		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		fmt.Printf("* err: Tag not found: %s.\n", tag)
+		Fprintfln("* err: Tag not found: %s.", tag)
 		return nil
 	} else if resp.StatusCode != http.StatusOK {
-		fmt.Printf("* err: Failed to access, status code: %d.\n", resp.StatusCode)
+		Fprintfln("* err: Failed to access, status code: %d.", resp.StatusCode)
 		return nil
 	}
 
 	var release Release
 	err = json.NewDecoder(resp.Body).Decode(&release)
 	if err != nil {
-		fmt.Printf("* err: Failed to parse release body: %s.", err.Error())
+		Fprintfln("* err: Failed to parse release body: %v", err)
 		return nil
 	}
 

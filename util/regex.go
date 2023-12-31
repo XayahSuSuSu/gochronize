@@ -31,28 +31,28 @@ func MatchCustomRegex(variable, varStr, str string) (string, string, error) {
 	pattern := fmt.Sprintf(`\%s\((.*)\)\[(.*)\]`, variable)
 	varMatches, err := FindStringSubmatch(varStr, pattern)
 	if err != nil {
-		fmt.Printf("* err: Failed to match: %s.\n", err.Error())
+		Fprintfln("* err: Failed to match: %v", err)
 		return "", "", err
 	}
 	if len(varMatches) == 3 {
 		group, err := strconv.Atoi(varMatches[2])
 		if err != nil {
-			fmt.Printf("* err: %s is not an int number, %s.\n", varMatches[2], err.Error())
+			Fprintfln("* err: %s is not an int number, %v", varMatches[2], err)
 		}
 		matches, err := FindStringSubmatch(str, varMatches[1])
 		if err != nil {
-			fmt.Printf("* err: Failed to match: %s.\n", err.Error())
+			Fprintfln("* err: Failed to match: %v", err)
 		}
 		if len(matches) > group {
 			return varMatches[0], matches[group], nil
 		} else {
-			fmt.Printf("* err: Group is out of range, index: %d, size: %d.\n", group, len(matches))
-			fmt.Printf("* err: Current capturing groups: %s.\n", strings.Join(matches, ", "))
+			Fprintfln("* err: Group is out of range, index: %d, size: %d.", group, len(matches))
+			Fprintfln("* err: Current capturing groups: %s.", strings.Join(matches, ", "))
 			return "", "", fmt.Errorf("")
 		}
 	} else {
-		fmt.Printf("* err: Only support two capturing groups: %s.\n", pattern)
-		fmt.Printf("* err: Current capturing groups: %s.\n", strings.Join(varMatches, ", "))
+		Fprintfln("* err: Only support two capturing groups: %s.", pattern)
+		Fprintfln("* err: Current capturing groups: %s.", strings.Join(varMatches, ", "))
 		return "", "", fmt.Errorf("")
 	}
 }

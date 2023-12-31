@@ -9,30 +9,24 @@ import (
 	"time"
 )
 
-func ParseArgs(args Args) int {
+func ParseArgs(args Args) {
 	if args.Config != "" {
 		// Config mode
 
 		// Parse config
-		config, err := ReadFromConfig(args.Config)
-		if err != nil {
-			return ErrorIO
-		}
+		config := ReadFromConfig(args.Config)
 
 		// Get http client
-		httpClient, err := GetHttpClient(config.ProxyHttp, config.Timeout)
-		if err != nil {
-			return Error
-		}
+		httpClient := GetHttpClient(config.ProxyHttp, config.Timeout)
 
 		// Download for each config
 		exitCode := Success
 		for _, target := range config.Targets {
-			fmt.Printf("********************************************\n")
-			fmt.Printf("* user: %s\n", target.User)
-			fmt.Printf("* repo: %s\n", target.Repo)
-			fmt.Printf("* sync: %s\n", target.Sync)
-			fmt.Printf("********************************************\n")
+			Printfln("********************************************")
+			Printfln("* user: %s", target.User)
+			Printfln("* repo: %s", target.Repo)
+			Printfln("* sync: %s", target.Sync)
+			Printfln("********************************************")
 
 			switch target.Sync {
 			case SyncLatestRelease:
@@ -61,11 +55,11 @@ func ParseArgs(args Args) int {
 				}
 			}
 		}
-		return exitCode
+		os.Exit(exitCode)
 	} else if args.Version {
 		// Print the version
 
-		fmt.Printf("Gochronize version: %s.\n", Version)
+		Printfln("Gochronize version: %s.", Version)
 	} else if args.Help {
 		// Print the usage
 
@@ -74,10 +68,10 @@ func ParseArgs(args Args) int {
 		// Unknown cmd
 
 		flag.Usage()
-		return ErrorUnknownCmd
+		os.Exit(ErrorUnknownCmd)
 	}
 
-	return Success
+	os.Exit(Success)
 }
 
 func syncLatestRelease(client *http.Client, target *Target, config *Config) error {
@@ -94,7 +88,7 @@ func syncLatest(client *http.Client, target *Target, config *Config) error {
 			return err
 		}
 	} else {
-		fmt.Printf("* err: There's nothing to download.\n")
+		Fprintfln("* err: There's nothing to download.")
 		return fmt.Errorf("")
 	}
 	return nil
@@ -104,7 +98,7 @@ func syncAll(client *http.Client, target *Target, config *Config) error {
 	var mErr error = nil
 	currentPage := 1
 	for currentPage != -1 {
-		fmt.Printf("* page: %d\n", currentPage)
+		Printfln("* page: %d", currentPage)
 		var releases []Release
 		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
 		if len(releases) >= 1 {
@@ -115,7 +109,7 @@ func syncAll(client *http.Client, target *Target, config *Config) error {
 				}
 			}
 		} else {
-			fmt.Printf("* err: There's nothing to download.\n")
+			Fprintfln("* err: There's nothing to download.")
 			mErr = fmt.Errorf("")
 		}
 	}
@@ -134,11 +128,11 @@ func syncByTag(client *http.Client, target *Target, config *Config) error {
 }
 
 func downloadRelease(client *http.Client, release *Release, target *Target, config *Config) error {
-	fmt.Printf("********************************************\n")
-	fmt.Printf("* release: %s\n", release.Name)
-	fmt.Printf("* tag: %s\n", release.TagName)
-	fmt.Printf("* exclusion: %s\n", strings.Join(target.Exclusion, ", "))
-	println("*")
+	Printfln("********************************************")
+	Printfln("* release: %s", release.Name)
+	Printfln("* tag: %s", release.TagName)
+	Printfln("* exclusion: [%s]", strings.Join(target.Exclusion, ", "))
+	Printfln("*")
 
 	if release != nil {
 		parentDir := target.ParentDir
@@ -149,7 +143,7 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 		parentDir = strings.ReplaceAll(parentDir, TagName, release.TagName)
 		parentDir = strings.TrimSuffix(parentDir, "/")
 
-		fmt.Printf("* info: Tring to create: %s.\n", parentDir)
+		Printfln("* info: Trying to create: %s.", parentDir)
 		err := os.MkdirAll(parentDir, os.ModePerm)
 		if err != nil {
 			return err
@@ -169,11 +163,11 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			fileName = strings.ReplaceAll(fileName, FileName, name)
 			createdAt, err := time.Parse(time.RFC3339, asset.CreatedAt)
 			if err != nil {
-				fmt.Printf("* err: Failed to parse date: %s, %s.\n", asset.CreatedAt, err.Error())
+				Fprintfln("* err: Failed to parse date: %s, %v", asset.CreatedAt, err)
 			}
 			updatedAt, err := time.Parse(time.RFC3339, asset.UpdatedAt)
 			if err != nil {
-				fmt.Printf("* err: Failed to parse date: %s, %s.\n", asset.CreatedAt, err.Error())
+				Fprintfln("* err: Failed to parse date: %s, %v", asset.CreatedAt, err)
 			}
 			fileName = strings.ReplaceAll(fileName, CreatedAt, createdAt.Format(config.TimeFormat))
 			fileName = strings.ReplaceAll(fileName, UpdatedAt, updatedAt.Format(config.TimeFormat))
@@ -182,10 +176,10 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			for _, s := range target.Exclusion {
 				matched, err := MatchString(name, s)
 				if err != nil {
-					fmt.Printf("* err: Failed to match: %s.\n", err.Error())
+					Fprintfln("* err: Failed to match: %v", err)
 				}
 				if matched {
-					fmt.Printf("* info: \"%s\" Matched: \"%s\", skip.\n", s, name)
+					Printfln("* info: \"%s\" Matched: \"%s\", skip.", s, name)
 					skip = true
 				}
 			}
@@ -195,23 +189,23 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 
 			count := config.Retries
 			for count > 0 {
-				fmt.Printf("* info: Download: %s.\n", name)
+				Printfln("* info: Download: %s.", name)
 				err := Download(client, url, fmt.Sprintf("%s/%s", parentDir, fileName))
 				if err != nil {
-					fmt.Println(err)
-					fmt.Printf("* info: Retry: %d\n", config.Retries-count+1)
+					Fprintfln("%v", err)
+					Printfln("* info: Retry: %d\n", config.Retries-count+1)
 					count--
 				} else {
 					break
 				}
 			}
 
-			fmt.Println("*")
+			Printfln("*")
 		}
 	} else {
 		return fmt.Errorf("failed to get the latest release")
 	}
 
-	fmt.Printf("********************************************\n")
+	Printfln("********************************************")
 	return nil
 }

@@ -1,7 +1,6 @@
 package util
 
 import (
-	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
 )
@@ -24,20 +23,20 @@ type Config struct {
 	Targets []Target `yaml:"targets"`
 }
 
-func ReadFromConfig(path string) (*Config, error) {
+func ReadFromConfig(path string) *Config {
 	errMsg := "Failed to read from config"
 	configFile, err := os.ReadFile(path)
 	if err != nil {
-		fmt.Printf("%s: %s.\n", errMsg, err.Error())
-		return nil, err
+		Fprintfln("%s: %v", errMsg, err)
+		os.Exit(ErrorIO)
 	}
 
 	config := Config{}
 	err = yaml.Unmarshal(configFile, &config)
 	if err != nil {
-		fmt.Printf("%s: %s.\n", errMsg, err.Error())
-		return nil, err
+		Fprintfln("%s: %v", errMsg, err)
+		os.Exit(ErrorIO)
 	}
 
-	return &config, nil
+	return &config
 }

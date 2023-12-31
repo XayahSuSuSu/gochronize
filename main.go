@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/XayahSuSuSu/gochronize/util"
-	"os"
 )
 
 func usage() {
@@ -29,6 +28,5 @@ func init() {
 func main() {
 	flag.Parse()
 
-	exitCode := util.ParseArgs(args)
-	os.Exit(exitCode)
+	util.ParseArgs(args)
 }
