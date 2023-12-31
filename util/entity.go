@@ -23,6 +23,7 @@ type Args struct {
 	Help    bool
 	Version bool
 	Config  string
+	History string
 }
 
 type Release struct {
