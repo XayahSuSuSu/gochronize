@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 )
 
 func ParseArgs(args Args) int {
@@ -32,38 +34,27 @@ func ParseArgs(args Args) int {
 			fmt.Printf("* sync: %s\n", target.Sync)
 			fmt.Printf("********************************************\n")
 
-			// The target local path to get sync with
-			repoDir := target.Repo
-			rootDir := target.RootDir
-			if target.RepoDir != "" {
-				repoDir = target.RepoDir
-			}
-			if rootDir == "" {
-				rootDir = "."
-			}
-			dstDir := fmt.Sprintf("%s/%s", rootDir, repoDir)
-
 			switch target.Sync {
 			case SyncLatestRelease:
-				err := syncLatestRelease(httpClient, target.User, target.Repo, dstDir, config.Retries)
+				err := syncLatestRelease(httpClient, &target, config)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
 				}
 			case SyncLatest:
-				err := syncLatest(httpClient, target.User, target.Repo, dstDir, config.Retries)
+				err := syncLatest(httpClient, &target, config)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
 				}
 			case SyncAll:
-				err := syncAll(httpClient, target.User, target.Repo, dstDir, config.Retries)
+				err := syncAll(httpClient, &target, config)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
 				}
 			default:
-				err := syncByTag(httpClient, target.User, target.Repo, target.Sync, dstDir, config.Retries)
+				err := syncByTag(httpClient, &target, config)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
@@ -89,16 +80,16 @@ func ParseArgs(args Args) int {
 	return Success
 }
 
-func syncLatestRelease(client *http.Client, user, repo, dstDir string, retries int) error {
-	latestRelease := GetLatestRelease(client, user, repo)
-	err := downloadRelease(client, latestRelease, dstDir, retries)
+func syncLatestRelease(client *http.Client, target *Target, config *Config) error {
+	latestRelease := GetLatestRelease(client, target.User, target.Repo)
+	err := downloadRelease(client, latestRelease, target, config)
 	return err
 }
 
-func syncLatest(client *http.Client, user, repo, dstDir string, retries int) error {
-	releases, _ := GetRelease(client, user, repo, 1)
+func syncLatest(client *http.Client, target *Target, config *Config) error {
+	releases, _ := GetRelease(client, target.User, target.Repo, 1)
 	if len(releases) >= 1 {
-		err := downloadRelease(client, &releases[0], dstDir, retries)
+		err := downloadRelease(client, &releases[0], target, config)
 		if err != nil {
 			return err
 		}
@@ -109,16 +100,16 @@ func syncLatest(client *http.Client, user, repo, dstDir string, retries int) err
 	return nil
 }
 
-func syncAll(client *http.Client, user, repo, dstDir string, retries int) error {
+func syncAll(client *http.Client, target *Target, config *Config) error {
 	var mErr error = nil
 	currentPage := 1
 	for currentPage != -1 {
 		fmt.Printf("* page: %d\n", currentPage)
 		var releases []Release
-		releases, currentPage = GetRelease(client, user, repo, currentPage)
+		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
 		if len(releases) >= 1 {
 			for _, release := range releases {
-				err := downloadRelease(client, &release, dstDir, retries)
+				err := downloadRelease(client, &release, target, config)
 				if err != nil {
 					mErr = err
 				}
@@ -131,32 +122,35 @@ func syncAll(client *http.Client, user, repo, dstDir string, retries int) error 
 	return mErr
 }
 
-func syncByTag(client *http.Client, user, repo, tag, dstDir string, retries int) error {
-	latestRelease := GetReleaseByTag(client, user, repo, tag)
+func syncByTag(client *http.Client, target *Target, config *Config) error {
+	latestRelease := GetReleaseByTag(client, target.User, target.Repo, target.Sync)
 	var err error
 	if latestRelease != nil {
-		err = downloadRelease(client, latestRelease, dstDir, retries)
+		err = downloadRelease(client, latestRelease, target, config)
 	} else {
-		err = fmt.Errorf("failed to get the release by tag: %s", tag)
+		err = fmt.Errorf("failed to get the release by tag: %s", target.Sync)
 	}
 	return err
 }
 
-func downloadRelease(client *http.Client, release *Release, dstDir string, retries int) error {
+func downloadRelease(client *http.Client, release *Release, target *Target, config *Config) error {
 	fmt.Printf("********************************************\n")
 	fmt.Printf("* release: %s\n", release.Name)
 	fmt.Printf("* tag: %s\n", release.TagName)
+	fmt.Printf("* exclusion: %s\n", strings.Join(target.Exclusion, ", "))
 	println("*")
 
-	err := os.MkdirAll(dstDir, os.ModePerm)
-	if err != nil {
-		return err
-	}
-
 	if release != nil {
-		dstTagDir := fmt.Sprintf("%s/%s", dstDir, release.TagName)
-		fmt.Printf("* info: Tring to create: %s.\n", dstTagDir)
-		err := os.MkdirAll(dstTagDir, os.ModePerm)
+		parentDir := target.ParentDir
+		if parentDir == "" {
+			parentDir = fmt.Sprintf("./repos/%s/%s", RepoName, TagName)
+		}
+		parentDir = strings.ReplaceAll(parentDir, RepoName, target.Repo)
+		parentDir = strings.ReplaceAll(parentDir, TagName, release.TagName)
+		parentDir = strings.TrimSuffix(parentDir, "/")
+
+		fmt.Printf("* info: Tring to create: %s.\n", parentDir)
+		err := os.MkdirAll(parentDir, os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -164,14 +158,48 @@ func downloadRelease(client *http.Client, release *Release, dstDir string, retri
 		for _, asset := range release.Assets {
 			url := asset.BrowserDownloadURL
 			name := asset.Name
+			fileName := target.FileName
+			matchedVar, matchedStr, err := MatchCustomRegex(FileName, fileName, name)
+			if err == nil {
+				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
+			}
+			if fileName == "" {
+				fileName = FileName
+			}
+			fileName = strings.ReplaceAll(fileName, FileName, name)
+			createdAt, err := time.Parse(time.RFC3339, asset.CreatedAt)
+			if err != nil {
+				fmt.Printf("* err: Failed to parse date: %s, %s.\n", asset.CreatedAt, err.Error())
+			}
+			updatedAt, err := time.Parse(time.RFC3339, asset.UpdatedAt)
+			if err != nil {
+				fmt.Printf("* err: Failed to parse date: %s, %s.\n", asset.CreatedAt, err.Error())
+			}
+			fileName = strings.ReplaceAll(fileName, CreatedAt, createdAt.Format(config.TimeFormat))
+			fileName = strings.ReplaceAll(fileName, UpdatedAt, updatedAt.Format(config.TimeFormat))
 
-			count := retries
+			skip := false
+			for _, s := range target.Exclusion {
+				matched, err := MatchString(name, s)
+				if err != nil {
+					fmt.Printf("* err: Failed to match: %s.\n", err.Error())
+				}
+				if matched {
+					fmt.Printf("* info: \"%s\" Matched: \"%s\", skip.\n", s, name)
+					skip = true
+				}
+			}
+			if skip {
+				continue
+			}
+
+			count := config.Retries
 			for count > 0 {
 				fmt.Printf("* info: Download: %s.\n", name)
-				err := Download(client, url, fmt.Sprintf("%s/%s", dstTagDir, name))
+				err := Download(client, url, fmt.Sprintf("%s/%s", parentDir, fileName))
 				if err != nil {
 					fmt.Println(err)
-					fmt.Printf("* info: Retry: %d\n", retries-count+1)
+					fmt.Printf("* info: Retry: %d\n", config.Retries-count+1)
 					count--
 				} else {
 					break

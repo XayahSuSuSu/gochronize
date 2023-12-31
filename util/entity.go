@@ -9,9 +9,14 @@ const (
 )
 
 const (
-	SyncLatest        = "latest"
-	SyncLatestRelease = "latest_release"
-	SyncAll           = "all"
+	SyncLatest        = "${latest}"
+	SyncLatestRelease = "${latest_release}"
+	SyncAll           = "${all}"
+	RepoName          = "${repo_name}"
+	TagName           = "${tag_name}"
+	FileName          = "${file_name}"
+	CreatedAt         = "${created_at}"
+	UpdatedAt         = "${updated_at}"
 )
 
 type Args struct {
@@ -26,5 +31,7 @@ type Release struct {
 	Assets  []struct {
 		Name               string `json:"name"`
 		BrowserDownloadURL string `json:"browser_download_url"`
+		CreatedAt          string `json:"created_at"`
+		UpdatedAt          string `json:"updated_at"`
 	} `json:"assets"`
 }

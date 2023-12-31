@@ -1,11 +1,32 @@
 proxy_http: "http://127.0.0.1:20171" # Proxy address, support http/https. Use no proxy if left with "".
 timeout: 30
 retries: 3
+time_format: "2006-01-02" # Ref: https://pkg.go.dev/time#example-Time.Format
+
+# Available vars:
+# sync:
+#   - ${latest}
+#   - ${latest_release}
+#   - ${all}
+# parent_dir:
+#   - ${repo_name}
+#   - ${tag_name}
+# file_name:
+#   - ${file_name}
+#   - ${created_at}
+#   - ${updated_at}
 
 targets:
   # https://github.com/XayahSuSuSu/Android-DataBackup
   - user: "XayahSuSuSu"
     repo: "Android-DataBackup"
-    sync: "all" # "latest", "latest_release", "all" or specified tag name.
-    root_dir: "./repos" # Root dir path, choose current dir as root if left with "".
-    repo_dir: "data_backup" # Repo dir name, use repo name if left with "".
+    sync: "${latest_release}"
+    file_name: "${file_name}(.*)[0]"
+
+  # https://github.com/gkd-kit/gkd
+  - user: "gkd-kit"
+    repo: "gkd"
+    sync: "${all}" # Vars or specified tag name.
+    parent_dir: "./repos/${repo_name}/${tag_name}" # Root dir path. Set as "./repos/${repo_name}/${tag_name}" if left with "".
+    file_name: "${file_name}" # Repo dir name. Set as "${file_name}" if left with "".
+    exclusion: [ "output.*" ] # Exclude file name, support regex.

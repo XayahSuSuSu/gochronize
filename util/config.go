@@ -7,17 +7,19 @@ import (
 )
 
 type Target struct {
-	User    string `yaml:"user"`
-	Repo    string `yaml:"repo"`
-	Sync    string `yaml:"sync"`
-	RootDir string `yaml:"root_dir"`
-	RepoDir string `yaml:"repo_dir"`
+	User      string   `yaml:"user"`
+	Repo      string   `yaml:"repo"`
+	Sync      string   `yaml:"sync"`
+	ParentDir string   `yaml:"parent_dir"`
+	FileName  string   `yaml:"file_name"`
+	Exclusion []string `yaml:"exclusion"`
 }
 
 type Config struct {
-	ProxyHttp string `yaml:"proxy_http"`
-	Timeout   int    `yaml:"timeout"`
-	Retries   int    `yaml:"retries"`
+	ProxyHttp  string `yaml:"proxy_http"`
+	Timeout    int    `yaml:"timeout"`
+	Retries    int    `yaml:"retries"`
+	TimeFormat string `yaml:"time_format"`
 
 	Targets []Target `yaml:"targets"`
 }
