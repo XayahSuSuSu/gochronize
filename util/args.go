@@ -61,25 +61,31 @@ func ParseArgs(args Args) {
 
 			switch target.Sync {
 			case SyncLatestRelease:
-				err := syncLatestRelease(httpClient, &target, config)
+				err := syncLatestRelease(httpClient, &target, config, &args)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
 				}
 			case SyncLatest:
-				err := syncLatest(httpClient, &target, config)
+				err := syncLatest(httpClient, &target, config, &args)
+				if err != nil {
+					exitCode = ErrorDownload
+					continue
+				}
+			case SyncFromLatestLocal:
+				err := syncFromLatestLocal(httpClient, &target, config, &args)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
 				}
 			case SyncAll:
-				err := syncAll(httpClient, &target, config)
+				err := syncAll(httpClient, &target, config, &args)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
 				}
 			default:
-				err := syncByTag(httpClient, &target, config)
+				err := syncByTag(httpClient, &target, config, &args)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
@@ -112,16 +118,16 @@ func ParseArgs(args Args) {
 	os.Exit(Success)
 }
 
-func syncLatestRelease(client *http.Client, target *Target, config *Config) error {
+func syncLatestRelease(client *http.Client, target *Target, config *Config, args *Args) error {
 	latestRelease := GetLatestRelease(client, target.User, target.Repo)
-	err := downloadRelease(client, latestRelease, target, config)
+	err := downloadRelease(client, latestRelease, target, config, args)
 	return err
 }
 
-func syncLatest(client *http.Client, target *Target, config *Config) error {
+func syncLatest(client *http.Client, target *Target, config *Config, args *Args) error {
 	releases, _ := GetRelease(client, target.User, target.Repo, 1)
 	if len(releases) >= 1 {
-		err := downloadRelease(client, &releases[0], target, config)
+		err := downloadRelease(client, &releases[0], target, config, args)
 		if err != nil {
 			return err
 		}
@@ -132,7 +138,52 @@ func syncLatest(client *http.Client, target *Target, config *Config) error {
 	return nil
 }
 
-func syncAll(client *http.Client, target *Target, config *Config) error {
+func syncFromLatestLocal(client *http.Client, target *Target, config *Config, args *Args) error {
+	var mErr error = nil
+	currentPage := 1
+	for currentPage != -1 {
+		Printfln("* page: %d", currentPage)
+		var releases []Release
+		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
+		if len(releases) >= 1 {
+			var localRepo *HistoryRepo = nil
+			for _, r := range history.Repos {
+				if r.User == target.User && r.Repo == target.Repo {
+					localRepo = &r
+				}
+			}
+			for _, release := range releases {
+				var latestReleaseId int64 = -1
+				if localRepo != nil {
+					for _, r := range localRepo.Releases {
+						if latestReleaseId < r.Id {
+							latestReleaseId = r.Id
+						}
+					}
+				}
+
+				if latestReleaseId != release.Id {
+					Printfln("* info: This release is newer than latest local release.")
+					Printfln("* info: Current release id: %d.", release.Id)
+					Printfln("* info: The latest local release id: %d.", latestReleaseId)
+					Printfln("* info: -1 means that there's no latest local release.")
+					err := downloadRelease(client, &release, target, config, args)
+					if err != nil {
+						mErr = err
+					}
+				} else {
+					return mErr
+				}
+			}
+		} else {
+			Fprintfln("* err: There's nothing to download.")
+			mErr = fmt.Errorf("")
+		}
+	}
+	return mErr
+}
+
+func syncAll(client *http.Client, target *Target, config *Config, args *Args) error {
 	var mErr error = nil
 	currentPage := 1
 	for currentPage != -1 {
@@ -141,7 +192,7 @@ func syncAll(client *http.Client, target *Target, config *Config) error {
 		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
 		if len(releases) >= 1 {
 			for _, release := range releases {
-				err := downloadRelease(client, &release, target, config)
+				err := downloadRelease(client, &release, target, config, args)
 				if err != nil {
 					mErr = err
 				}
@@ -154,18 +205,18 @@ func syncAll(client *http.Client, target *Target, config *Config) error {
 	return mErr
 }
 
-func syncByTag(client *http.Client, target *Target, config *Config) error {
+func syncByTag(client *http.Client, target *Target, config *Config, args *Args) error {
 	latestRelease := GetReleaseByTag(client, target.User, target.Repo, target.Sync)
 	var err error
 	if latestRelease != nil {
-		err = downloadRelease(client, latestRelease, target, config)
+		err = downloadRelease(client, latestRelease, target, config, args)
 	} else {
 		err = fmt.Errorf("failed to get the release by tag: %s", target.Sync)
 	}
 	return err
 }
 
-func downloadRelease(client *http.Client, release *Release, target *Target, config *Config) error {
+func downloadRelease(client *http.Client, release *Release, target *Target, config *Config, args *Args) error {
 	Printfln("********************************************")
 	Printfln("* release: %s", release.Name)
 	Printfln("* tag: %s", release.TagName)
@@ -179,6 +230,10 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			historyReleaseIndex = i
 		}
 	}
+	historyRelease.Id = release.Id
+	historyRelease.Prerelease = release.Prerelease
+	historyRelease.CreatedAt = release.CreatedAt
+	historyRelease.PublishedAt = release.PublishedAt
 
 	if release != nil {
 		parentDir := target.ParentDir
@@ -275,21 +330,30 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 				}
 			}
 
-			count := config.Retries
-			for count > 0 {
-				dst := fmt.Sprintf("%s/%s", parentDir, fileName)
-				Printfln("* info: Download: %s to %s.", name, dst)
-				err := Download(client, url, dst)
-				if err != nil {
-					Fprintfln("%v", err)
-					Printfln("* info: Retry: %d\n", config.Retries-count+1)
-					count--
-				} else {
-					break
+			if !args.DryRun {
+				count := config.Retries
+				for count > 0 {
+					dst := fmt.Sprintf("%s/%s", parentDir, fileName)
+					Printfln("* info: Download: %s to %s.", name, dst)
+					err := Download(client, url, dst)
+					if err != nil {
+						Fprintfln("%v", err)
+						Printfln("* info: Retry: %d", config.Retries-count+1)
+						count--
+						if count == 0 {
+							Fprintfln("* err: Failed to download %s within %d times, trying to delete tmp file: %s.", name, config.Retries, dst)
+							err := os.Remove(dst)
+							if err != nil {
+								Fprintfln("* err: Failed delete: %s.", name)
+							}
+						}
+					} else {
+						break
+					}
 				}
+			} else {
+				Printfln("* info: Dry-run is enabled and skip download.")
 			}
-
-			Printfln("*")
 		}
 
 		if historyReleaseIndex == -1 {

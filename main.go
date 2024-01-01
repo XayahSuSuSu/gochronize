@@ -21,6 +21,7 @@ var args util.Args
 func init() {
 	flag.BoolVar(&args.Help, "help", false, "Print the usage.")
 	flag.BoolVar(&args.Version, "version", false, "Print the version.")
+	flag.BoolVar(&args.DryRun, "dry-run", false, "Do a trial run with no downloads.")
 	flag.StringVar(&args.Config, "config", "", "The configuration path of yaml file format.")
 	flag.StringVar(&args.History, "history", "history.yml", "The history configuration path of yaml file format.")
 	flag.Usage = usage

@@ -3,6 +3,7 @@ package util
 import (
 	"gopkg.in/yaml.v3"
 	"os"
+	"sort"
 )
 
 type Target struct {
@@ -53,9 +54,13 @@ type HistoryAsset struct {
 }
 
 type HistoryRelease struct {
-	Name    string         `yaml:"name"`
-	TagName string         `yaml:"tag_name"`
-	Assets  []HistoryAsset `yaml:"assets"`
+	Name        string         `yaml:"name"`
+	TagName     string         `yaml:"tag_name"`
+	Id          int64          `yaml:"id"`
+	Prerelease  bool           `yaml:"prerelease"`
+	CreatedAt   string         `yaml:"created_at"`
+	PublishedAt string         `yaml:"published_at"`
+	Assets      []HistoryAsset `yaml:"assets"`
 }
 
 type HistoryRepo struct {
@@ -85,6 +90,15 @@ func ReadFromHistory(path string) *History {
 }
 
 func SaveHistoryToYaml(name string, history *History) error {
+	// Sort releases by id.
+	for i, repo := range history.Repos {
+		releases := repo.Releases
+		sort.Slice(releases, func(i, j int) bool {
+			return releases[i].Id > releases[j].Id
+		})
+		history.Repos[i].Releases = releases
+	}
+
 	data, err := yaml.Marshal(&history)
 	if err != nil {
 		return err
