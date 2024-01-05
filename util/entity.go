@@ -15,6 +15,7 @@ const (
 	SyncAll             = "${all}"
 	RepoName            = "${repo_name}"
 	TagName             = "${tag_name}"
+	ReleaseName         = "${release_name}"
 	FileName            = "${file_name}"
 	CreatedAt           = "${created_at}"
 	UpdatedAt           = "${updated_at}"

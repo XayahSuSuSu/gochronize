@@ -260,6 +260,7 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			fileName = strings.ReplaceAll(fileName, FileName, name)
 			fileName = strings.ReplaceAll(fileName, RepoName, target.Repo)
 			fileName = strings.ReplaceAll(fileName, TagName, release.TagName)
+			fileName = strings.ReplaceAll(fileName, ReleaseName, release.Name)
 			createdAt, err := time.Parse(time.RFC3339, asset.CreatedAt)
 			if err != nil {
 				Fprintfln("* err: Failed to parse date: %s, %v", asset.CreatedAt, err)
@@ -279,6 +280,10 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
 			}
 			matchedVar, matchedStr, err = MatchCustomRegex(TagName, fileName, name)
+			if err == nil {
+				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
+			}
+			matchedVar, matchedStr, err = MatchCustomRegex(ReleaseName, fileName, name)
 			if err == nil {
 				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
 			}
