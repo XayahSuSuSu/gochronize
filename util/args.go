@@ -29,9 +29,9 @@ func ParseArgs(args Args) {
 		exitCode := Success
 		for _, target := range config.Targets {
 			if target.Url != "" {
-				urlSplit := strings.Split(strings.ReplaceAll(target.Url, ".git", ""), "/")
+				urlSplit := strings.Split(target.Url, "/")
 				if len(urlSplit) > 2 {
-					target.Repo = urlSplit[len(urlSplit)-1]
+					target.Repo = strings.TrimSuffix(urlSplit[len(urlSplit)-1], ".git")
 					target.User = urlSplit[len(urlSplit)-2]
 				} else {
 					Fprintfln("Failed to parse url: %s", target.Url)
