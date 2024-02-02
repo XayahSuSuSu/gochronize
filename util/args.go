@@ -216,6 +216,48 @@ func syncByTag(client *http.Client, target *Target, config *Config, args *Args) 
 	return err
 }
 
+func handleVars(old, fileName, repoName, tagName, releaseName, createdAtStr, updatedAtStr, timeFormat string) string {
+	str := strings.ReplaceAll(old, FileName, fileName)
+	str = strings.ReplaceAll(str, RepoName, repoName)
+	str = strings.ReplaceAll(str, TagName, tagName)
+	str = strings.ReplaceAll(str, ReleaseName, releaseName)
+	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+	if err != nil {
+		Fprintfln("* err: Failed to parse date: %s, %v", createdAtStr, err)
+	}
+	updatedAt, err := time.Parse(time.RFC3339, updatedAtStr)
+	if err != nil {
+		Fprintfln("* err: Failed to parse date: %s, %v", updatedAtStr, err)
+	}
+	str = strings.ReplaceAll(str, CreatedAt, createdAt.Format(timeFormat))
+	str = strings.ReplaceAll(str, UpdatedAt, updatedAt.Format(timeFormat))
+	matchedVar, matchedStr, err := MatchCustomRegex(FileName, str, fileName)
+	if err == nil {
+		str = strings.ReplaceAll(str, matchedVar, matchedStr)
+	}
+	matchedVar, matchedStr, err = MatchCustomRegex(RepoName, str, fileName)
+	if err == nil {
+		str = strings.ReplaceAll(str, matchedVar, matchedStr)
+	}
+	matchedVar, matchedStr, err = MatchCustomRegex(TagName, str, fileName)
+	if err == nil {
+		str = strings.ReplaceAll(str, matchedVar, matchedStr)
+	}
+	matchedVar, matchedStr, err = MatchCustomRegex(ReleaseName, str, fileName)
+	if err == nil {
+		str = strings.ReplaceAll(str, matchedVar, matchedStr)
+	}
+	matchedVar, matchedStr, err = MatchCustomRegex(CreatedAt, str, createdAt.Format(timeFormat))
+	if err == nil {
+		str = strings.ReplaceAll(str, matchedVar, matchedStr)
+	}
+	matchedVar, matchedStr, err = MatchCustomRegex(UpdatedAt, str, updatedAt.Format(timeFormat))
+	if err == nil {
+		str = strings.ReplaceAll(str, matchedVar, matchedStr)
+	}
+	return str
+}
+
 func downloadRelease(client *http.Client, release *Release, target *Target, config *Config, args *Args) error {
 	Printfln("********************************************")
 	Printfln("* release: %s", release.Name)
@@ -236,65 +278,28 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 	historyRelease.PublishedAt = release.PublishedAt
 
 	if release != nil {
-		parentDir := target.ParentDir
-		if parentDir == "" {
-			parentDir = fmt.Sprintf("./repos/%s/%s", RepoName, TagName)
-		}
-		parentDir = strings.ReplaceAll(parentDir, RepoName, target.Repo)
-		parentDir = strings.ReplaceAll(parentDir, TagName, release.TagName)
-		parentDir = strings.TrimSuffix(parentDir, "/")
-
-		Printfln("* info: Trying to create: %s.", parentDir)
-		err := os.MkdirAll(parentDir, os.ModePerm)
-		if err != nil {
-			return err
-		}
-
 		for _, asset := range release.Assets {
 			url := asset.BrowserDownloadURL
 			name := asset.Name
 			fileName := target.FileName
+			parentDir := target.ParentDir
+
+			if parentDir == "" {
+				parentDir = fmt.Sprintf("./repos/%s/%s", RepoName, TagName)
+			}
+			parentDir = handleVars(parentDir, name, target.Repo, release.TagName, release.Name, asset.CreatedAt, asset.UpdatedAt, config.TimeFormat)
+			parentDir = strings.TrimSuffix(parentDir, "/")
+
+			Printfln("* info: Trying to create: %s.", parentDir)
+			err := os.MkdirAll(parentDir, os.ModePerm)
+			if err != nil {
+				return err
+			}
+
 			if fileName == "" {
 				fileName = FileName
 			}
-			fileName = strings.ReplaceAll(fileName, FileName, name)
-			fileName = strings.ReplaceAll(fileName, RepoName, target.Repo)
-			fileName = strings.ReplaceAll(fileName, TagName, release.TagName)
-			fileName = strings.ReplaceAll(fileName, ReleaseName, release.Name)
-			createdAt, err := time.Parse(time.RFC3339, asset.CreatedAt)
-			if err != nil {
-				Fprintfln("* err: Failed to parse date: %s, %v", asset.CreatedAt, err)
-			}
-			updatedAt, err := time.Parse(time.RFC3339, asset.UpdatedAt)
-			if err != nil {
-				Fprintfln("* err: Failed to parse date: %s, %v", asset.CreatedAt, err)
-			}
-			fileName = strings.ReplaceAll(fileName, CreatedAt, createdAt.Format(config.TimeFormat))
-			fileName = strings.ReplaceAll(fileName, UpdatedAt, updatedAt.Format(config.TimeFormat))
-			matchedVar, matchedStr, err := MatchCustomRegex(FileName, fileName, name)
-			if err == nil {
-				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
-			}
-			matchedVar, matchedStr, err = MatchCustomRegex(RepoName, fileName, name)
-			if err == nil {
-				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
-			}
-			matchedVar, matchedStr, err = MatchCustomRegex(TagName, fileName, name)
-			if err == nil {
-				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
-			}
-			matchedVar, matchedStr, err = MatchCustomRegex(ReleaseName, fileName, name)
-			if err == nil {
-				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
-			}
-			matchedVar, matchedStr, err = MatchCustomRegex(CreatedAt, fileName, createdAt.Format(config.TimeFormat))
-			if err == nil {
-				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
-			}
-			matchedVar, matchedStr, err = MatchCustomRegex(UpdatedAt, fileName, updatedAt.Format(config.TimeFormat))
-			if err == nil {
-				fileName = strings.ReplaceAll(fileName, matchedVar, matchedStr)
-			}
+			fileName = handleVars(fileName, name, target.Repo, release.TagName, release.Name, asset.CreatedAt, asset.UpdatedAt, config.TimeFormat)
 
 			skip := false
 			for _, s := range target.Exclusion {

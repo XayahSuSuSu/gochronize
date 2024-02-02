@@ -11,8 +11,12 @@ time_format: "2006-01-02" # Format of ${created_at} and ${updated_at}, Ref: http
 #   - ${from_latest_local}        Sync the latest releases compared with latest local release.
 #   - ${all}                      Sync all releases.
 # parent_dir:
-#   - ${repo_name}                Repo name
-#   - ${tag_name}                 Repo tag name
+#   - ${file_name} or "${file_name(your_regex)[your_regex_group_index]}",      e.g. "${file_name(.*)[0]}"
+#   - ${repo_name} or "${repo_name(your_regex)[your_regex_group_index]}",         Repo name
+#   - ${tag_name} or "${tag_name(your_regex)[your_regex_group_index]}",           Repo tag name
+#   - ${release_name} or "${release_name(your_regex)[your_regex_group_index]}",   Repo release name
+#   - ${created_at} or "${created_at(your_regex)[your_regex_group_index]}"
+#   - ${updated_at} or "${updated_at(your_regex)[your_regex_group_index]}"
 # file_name:
 #   - ${file_name} or "${file_name(your_regex)[your_regex_group_index]}",      e.g. "${file_name(.*)[0]}"
 #   - ${repo_name} or "${repo_name(your_regex)[your_regex_group_index]}",         Repo name
