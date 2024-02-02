@@ -78,7 +78,7 @@ func ParseArgs(args Args) {
 					exitCode = ErrorDownload
 					continue
 				}
-			case SyncFromLatestLocal:
+			case SyncFromLatestLocal, SyncReleaseFromLatestLocal, SyncPrereleaseFromLatestLocal:
 				err := syncFromLatestLocal(httpClient, &target, config, &args)
 				if err != nil {
 					exitCode = ErrorDownload
@@ -202,6 +202,19 @@ func syncFromLatestLocal(client *http.Client, target *Target, config *Config, ar
 						if latestReleaseId < r.Id {
 							latestReleaseId = r.Id
 						}
+					}
+				}
+
+				switch target.Sync {
+				case SyncReleaseFromLatestLocal:
+					if release.Prerelease {
+						Printfln("* info: This release is a prerelease, skip.")
+						continue
+					}
+				case SyncPrereleaseFromLatestLocal:
+					if !release.Prerelease {
+						Printfln("* info: This release is not a prerelease, skip.")
+						continue
 					}
 				}
 
