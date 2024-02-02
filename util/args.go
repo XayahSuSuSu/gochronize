@@ -23,7 +23,7 @@ func ParseArgs(args Args) {
 		history = ReadFromHistory(args.History)
 
 		// Get http client
-		httpClient := GetHttpClient(config.ProxyHttp, config.Timeout)
+		httpClient := GetHttpClient(config.ProxyHttp, config.Token, config.Timeout)
 
 		// Download for each config
 		exitCode := Success

@@ -19,6 +19,7 @@ type Target struct {
 
 type Config struct {
 	ProxyHttp  string `yaml:"proxy_http"`
+	Token      string `yaml:"token"`
 	Timeout    int    `yaml:"timeout"`
 	Retries    int    `yaml:"retries"`
 	TimeFormat string `yaml:"time_format"`

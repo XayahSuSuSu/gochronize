@@ -1,4 +1,5 @@
 proxy_http: "http://127.0.0.1:20171" # Proxy address, support http/https. Use no proxy if left with "".
+token: "" # "GitHub" -> "Settings" -> "Developer settings" -> "Personal access tokens" -> "Tokens (classic)". Use no token if left with "".
 timeout: 300
 retries: 3
 time_format: "2006-01-02" # Format of ${created_at} and ${updated_at}, Ref: https://pkg.go.dev/time#example-Time.Format

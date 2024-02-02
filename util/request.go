@@ -13,7 +13,21 @@ import (
 	"time"
 )
 
-func GetHttpClient(proxyHttp string, timeout int) *http.Client {
+var token = ""
+
+func Get(client *http.Client, url string) (*http.Response, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+		println(token)
+	}
+	return client.Do(req)
+}
+
+func GetHttpClient(proxyHttp string, t string, timeout int) *http.Client {
 	var client http.Client
 	if proxyHttp != "" {
 		proxy, err := url.Parse(proxyHttp)
@@ -32,13 +46,14 @@ func GetHttpClient(proxyHttp string, timeout int) *http.Client {
 			Timeout: time.Duration(timeout) * time.Second,
 		}
 	}
+	token = t
 	return &client
 }
 
 func GetRelease(client *http.Client, user, repo string, page int) ([]Release, int) {
 	api := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases?page=%d", user, repo, page)
 
-	resp, err := client.Get(api)
+	resp, err := Get(client, api)
 	if err != nil {
 		Fprintfln("* err: Failed to get: %s, %v", api, err)
 		return nil, -1
@@ -76,7 +91,7 @@ func GetRelease(client *http.Client, user, repo string, page int) ([]Release, in
 func GetLatestRelease(client *http.Client, user, repo string) *Release {
 	api := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/latest", user, repo)
 
-	resp, err := client.Get(api)
+	resp, err := Get(client, api)
 	if err != nil {
 		Fprintfln("* err: Failed to get: %s, %v", api, err)
 		return nil
@@ -101,7 +116,7 @@ func GetLatestRelease(client *http.Client, user, repo string) *Release {
 func GetReleaseByTag(client *http.Client, user, repo, tag string) *Release {
 	api := fmt.Sprintf("https://api.github.com/repos/%s/%s/releases/tags/%s", user, repo, tag)
 
-	resp, err := client.Get(api)
+	resp, err := Get(client, api)
 	if err != nil {
 		Fprintfln("* err: Failed to get: %s, %v", api, err)
 		return nil
@@ -127,7 +142,7 @@ func GetReleaseByTag(client *http.Client, user, repo, tag string) *Release {
 }
 
 func Download(client *http.Client, url, dst string) error {
-	resp, err := client.Get(url)
+	resp, err := Get(client, url)
 	if err != nil {
 		return err
 	}
