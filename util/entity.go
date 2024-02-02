@@ -9,16 +9,17 @@ const (
 )
 
 const (
-	SyncLatest          = "${latest}"
-	SyncLatestRelease   = "${latest_release}"
-	SyncFromLatestLocal = "${from_latest_local}"
-	SyncAll             = "${all}"
-	RepoName            = "${repo_name}"
-	TagName             = "${tag_name}"
-	ReleaseName         = "${release_name}"
-	FileName            = "${file_name}"
-	CreatedAt           = "${created_at}"
-	UpdatedAt           = "${updated_at}"
+	SyncLatest           = "${latest}"
+	SyncLatestRelease    = "${latest_release}"
+	SyncLatestPrerelease = "${latest_prerelease}"
+	SyncFromLatestLocal  = "${from_latest_local}"
+	SyncAll              = "${all}"
+	RepoName             = "${repo_name}"
+	TagName              = "${tag_name}"
+	ReleaseName          = "${release_name}"
+	FileName             = "${file_name}"
+	CreatedAt            = "${created_at}"
+	UpdatedAt            = "${updated_at}"
 )
 
 type Args struct {

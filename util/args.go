@@ -66,6 +66,12 @@ func ParseArgs(args Args) {
 					exitCode = ErrorDownload
 					continue
 				}
+			case SyncLatestPrerelease:
+				err := syncLatestPrerelease(httpClient, &target, config, &args)
+				if err != nil {
+					exitCode = ErrorDownload
+					continue
+				}
 			case SyncLatest:
 				err := syncLatest(httpClient, &target, config, &args)
 				if err != nil {
@@ -122,6 +128,43 @@ func syncLatestRelease(client *http.Client, target *Target, config *Config, args
 	latestRelease := GetLatestRelease(client, target.User, target.Repo)
 	err := downloadRelease(client, latestRelease, target, config, args)
 	return err
+}
+
+func syncLatestPrerelease(client *http.Client, target *Target, config *Config, args *Args) error {
+	var prerelease *Release = nil
+	currentPage := 1
+	for currentPage != -1 {
+		isSuccess := false
+		Printfln("* page: %d", currentPage)
+		var releases []Release
+		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
+		if len(releases) >= 1 {
+			for _, release := range releases {
+				if release.Prerelease {
+					prerelease = &release
+					isSuccess = true
+					break
+				}
+			}
+		} else {
+			Fprintfln("* err: There's nothing to download.")
+			return fmt.Errorf("")
+		}
+		if isSuccess {
+			break
+		}
+	}
+
+	if prerelease != nil {
+		err := downloadRelease(client, prerelease, target, config, args)
+		if err != nil {
+			return err
+		}
+	} else {
+		Fprintfln("* err: There's no any prerelease to download.")
+		return fmt.Errorf("")
+	}
+	return nil
 }
 
 func syncLatest(client *http.Client, target *Target, config *Config, args *Args) error {

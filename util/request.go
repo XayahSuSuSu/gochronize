@@ -22,7 +22,6 @@ func Get(client *http.Client, url string) (*http.Response, error) {
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
-		println(token)
 	}
 	return client.Do(req)
 }

@@ -8,6 +8,7 @@ time_format: "2006-01-02" # Format of ${created_at} and ${updated_at}, Ref: http
 # sync:
 #   - ${latest}                   Sync the latest release, no matter if it's prerelease.
 #   - ${latest_release}           Sync the latest release, ignore prerelease.
+#   - ${latest_prerelease}        Sync the latest prerelease.
 #   - ${from_latest_local}        Sync the latest releases compared with latest local release.
 #   - ${all}                      Sync all releases.
 # parent_dir:
