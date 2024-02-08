@@ -315,25 +315,25 @@ func handleVars(old, fileName, repoName, tagName, releaseName, createdAtStr, upd
 }
 
 func downloadRelease(client *http.Client, release *Release, target *Target, config *Config, args *Args) error {
-	Printfln("********************************************")
-	Printfln("* release: %s", release.Name)
-	Printfln("* tag: %s", release.TagName)
-	Printfln("* exclusion: [%s]", strings.Join(target.Exclusion, ", "))
-
-	historyRelease := HistoryRelease{Name: release.Name, TagName: release.TagName}
-	historyReleaseIndex := -1
-	for i, r := range history.Repos[repoIndex].Releases {
-		if r.Name == release.Name && r.TagName == release.TagName {
-			historyRelease = r
-			historyReleaseIndex = i
-		}
-	}
-	historyRelease.Id = release.Id
-	historyRelease.Prerelease = release.Prerelease
-	historyRelease.CreatedAt = release.CreatedAt
-	historyRelease.PublishedAt = release.PublishedAt
-
 	if release != nil {
+		Printfln("********************************************")
+		Printfln("* release: %s", release.Name)
+		Printfln("* tag: %s", release.TagName)
+		Printfln("* exclusion: [%s]", strings.Join(target.Exclusion, ", "))
+
+		historyRelease := HistoryRelease{Name: release.Name, TagName: release.TagName}
+		historyReleaseIndex := -1
+		for i, r := range history.Repos[repoIndex].Releases {
+			if r.Name == release.Name && r.TagName == release.TagName {
+				historyRelease = r
+				historyReleaseIndex = i
+			}
+		}
+		historyRelease.Id = release.Id
+		historyRelease.Prerelease = release.Prerelease
+		historyRelease.CreatedAt = release.CreatedAt
+		historyRelease.PublishedAt = release.PublishedAt
+
 		for _, asset := range release.Assets {
 			url := asset.BrowserDownloadURL
 			name := asset.Name
