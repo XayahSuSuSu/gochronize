@@ -237,6 +237,7 @@ func syncFromLatestLocal(client *http.Client, target *Target, config *Config, ar
 			for _, r := range history.Repos {
 				if r.User == target.User && r.Repo == target.Repo {
 					localRepo = &r
+					break
 				}
 			}
 			for _, release := range releases {
@@ -245,6 +246,7 @@ func syncFromLatestLocal(client *http.Client, target *Target, config *Config, ar
 					for _, r := range localRepo.Releases {
 						if latestReleaseId < r.Id {
 							latestReleaseId = r.Id
+							break
 						}
 					}
 				}
