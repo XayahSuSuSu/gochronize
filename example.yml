@@ -3,6 +3,8 @@ token: "" # "GitHub" -> "Settings" -> "Developer settings" -> "Personal access t
 timeout: 300
 retries: 3
 time_format: "2006-01-02" # Format of ${created_at} and ${updated_at}, Ref: https://pkg.go.dev/time#example-Time.Format
+log_to_file: true # Redirect log to file
+max_log_file: 3   # Max log files
 
 # Available vars:
 # sync:

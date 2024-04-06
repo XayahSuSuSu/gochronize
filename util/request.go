@@ -54,13 +54,17 @@ func GetRelease(client *http.Client, user, repo string, page int) ([]Release, in
 
 	resp, err := Get(client, api)
 	if err != nil {
-		Fprintfln("* err: Failed to get: %s, %v", api, err)
+		msg := fmt.Sprintf("* err: Failed to get: %s, %v", api, err)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil, -1
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		Fprintfln("* err: Failed to access, status code: %d.", resp.StatusCode)
+		msg := fmt.Sprintf("* err: Failed to access, status code: %d.", resp.StatusCode)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil, -1
 	}
 
@@ -80,7 +84,9 @@ func GetRelease(client *http.Client, user, repo string, page int) ([]Release, in
 	var releases []Release
 	err = json.NewDecoder(resp.Body).Decode(&releases)
 	if err != nil {
-		Fprintfln("* err: Failed to parse release body: %v", err)
+		msg := fmt.Sprintf("* err: Failed to parse release body: %v", err)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil, -1
 	}
 
@@ -92,20 +98,26 @@ func GetLatestRelease(client *http.Client, user, repo string) *Release {
 
 	resp, err := Get(client, api)
 	if err != nil {
-		Fprintfln("* err: Failed to get: %s, %v", api, err)
+		msg := fmt.Sprintf("* err: Failed to get: %s, %v", api, err)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		Fprintfln("* err: Failed to access, status code: %d.", resp.StatusCode)
+		msg := fmt.Sprintf("* err: Failed to access, status code: %d.", resp.StatusCode)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil
 	}
 
 	var release Release
 	err = json.NewDecoder(resp.Body).Decode(&release)
 	if err != nil {
-		Fprintfln("* err: Failed to parse release body: %v", err)
+		msg := fmt.Sprintf("* err: Failed to parse release body: %v", err)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil
 	}
 
@@ -117,23 +129,31 @@ func GetReleaseByTag(client *http.Client, user, repo, tag string) *Release {
 
 	resp, err := Get(client, api)
 	if err != nil {
-		Fprintfln("* err: Failed to get: %s, %v", api, err)
+		msg := fmt.Sprintf("* err: Failed to get: %s, %v", api, err)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		Fprintfln("* err: Tag not found: %s.", tag)
+		msg := fmt.Sprintf("* err: Tag not found: %s.", tag)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil
 	} else if resp.StatusCode != http.StatusOK {
-		Fprintfln("* err: Failed to access, status code: %d.", resp.StatusCode)
+		msg := fmt.Sprintf("* err: Failed to access, status code: %d.", resp.StatusCode)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil
 	}
 
 	var release Release
 	err = json.NewDecoder(resp.Body).Decode(&release)
 	if err != nil {
-		Fprintfln("* err: Failed to parse release body: %v", err)
+		msg := fmt.Sprintf("* err: Failed to parse release body: %v", err)
+		Fprintfln(msg)
+		Errors = append(Errors, Err{User: user, Repo: repo, Msg: msg})
 		return nil
 	}
 

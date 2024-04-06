@@ -23,6 +23,8 @@ type Config struct {
 	Timeout    int    `yaml:"timeout"`
 	Retries    int    `yaml:"retries"`
 	TimeFormat string `yaml:"time_format"`
+	LogToFile  bool   `yaml:"log_to_file"`
+	MaxLogFile int    `yaml:"max_log_file"`
 
 	Targets []Target `yaml:"targets"`
 }

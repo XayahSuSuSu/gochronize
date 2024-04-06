@@ -12,6 +12,7 @@ import (
 var (
 	history   *History
 	repoIndex = -1
+	Errors    []Err
 )
 
 func ParseArgs(args Args) {
@@ -21,6 +22,44 @@ func ParseArgs(args Args) {
 		// Parse config
 		config := ReadFromConfig(args.Config)
 		history = ReadFromHistory(args.History)
+
+		// Redirect log to file
+		if config.LogToFile {
+
+			// Create log dir
+			logDir := "log"
+			err := os.MkdirAll(logDir, os.ModePerm)
+			if err != nil {
+				Fprintfln("* err: Failed to mkdir: %s, %v", logDir, err)
+			}
+
+			// Clean up
+			logs, err := os.ReadDir(logDir)
+			if err != nil {
+				Fprintfln("* err: Failed to read dir: %s, %v", logDir, err)
+			}
+			if len(logs) >= config.MaxLogFile {
+				for i, log := range logs {
+					if i <= (len(logs) - config.MaxLogFile) {
+						path := fmt.Sprintf("%s/%s", logDir, log.Name())
+						err := os.Remove(path)
+						if err != nil {
+							Fprintfln("* err: Failed to delete: %s, %v", path, err)
+						}
+					}
+				}
+			}
+
+			// Create log file
+			logFilePath := fmt.Sprintf("%s/log_%d.txt", logDir, time.Now().Unix())
+			logFile, err := os.Create(logFilePath)
+			if err != nil {
+				Fprintfln("* err: Failed to create: %s, %v", logFilePath, err)
+			}
+			defer logFile.Close()
+			os.Stdout = logFile
+			os.Stderr = logFile
+		}
 
 		// Get http client
 		httpClient := GetHttpClient(config.ProxyHttp, config.Token, config.Timeout)
@@ -97,6 +136,11 @@ func ParseArgs(args Args) {
 					continue
 				}
 			}
+		}
+
+		Fprintfln("Errors count: %d", len(Errors))
+		for _, err := range Errors {
+			Fprintfln("User: %s, Repo: %s, err: %s", err.User, err.Repo, err.Msg)
 		}
 
 		err := SaveHistoryToYaml(args.History, history)
@@ -417,7 +461,9 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 						Printfln("* info: Retry: %d", config.Retries-count+1)
 						count--
 						if count == 0 {
-							Fprintfln("* err: Failed to download %s within %d times, trying to delete tmp file: %s.", name, config.Retries, dst)
+							msg := fmt.Sprintf("* err: Failed to download %s within %d times, trying to delete tmp file: %s.", name, config.Retries, dst)
+							Fprintfln(msg)
+							Errors = append(Errors, Err{User: target.User, Repo: target.Repo, Msg: msg})
 							err := os.Remove(dst)
 							if err != nil {
 								Fprintfln("* err: Failed delete: %s.", name)

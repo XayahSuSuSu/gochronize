@@ -46,3 +46,9 @@ type Release struct {
 		UpdatedAt          string `json:"updated_at"`
 	} `json:"assets"`
 }
+
+type Err struct {
+	User string
+	Repo string
+	Msg  string
+}
