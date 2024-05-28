@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/cheggaaa/pb/v3"
@@ -173,17 +174,29 @@ func Download(client *http.Client, url, dst string) error {
 	}
 	defer dstFile.Close()
 
-	bar := pb.Full.Start64(resp.ContentLength)
-	bar.Set(pb.Bytes, true)
-	bar.Set(pb.SIBytesPrefix, true)
-	bar.SetRefreshRate(time.Second)
+	if SimplifiedLog {
+		writer := bufio.NewWriter(dstFile)
+		_, err = io.Copy(writer, resp.Body)
+		if err != nil {
+			return err
+		}
+		err = writer.Flush()
+		if err != nil {
+			return err
+		}
+	} else {
+		bar := pb.Full.Start64(resp.ContentLength)
+		bar.Set(pb.Bytes, true)
+		bar.Set(pb.SIBytesPrefix, true)
+		bar.SetRefreshRate(time.Second)
 
-	reader := bar.NewProxyReader(resp.Body)
-	_, err = io.Copy(dstFile, reader)
-	if err != nil {
-		return err
+		reader := bar.NewProxyReader(resp.Body)
+		_, err = io.Copy(dstFile, reader)
+		if err != nil {
+			return err
+		}
+		bar.Finish()
 	}
-	bar.Finish()
 
 	return nil
 }

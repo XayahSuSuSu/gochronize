@@ -12,3 +12,9 @@ func Fprintfln(format string, a ...interface{}) {
 func Printfln(format string, a ...interface{}) {
 	fmt.Printf(format+"\n", a...)
 }
+
+func SimplifiedPrintfln(format string, a ...interface{}) {
+	if !SimplifiedLog {
+		fmt.Printf(format+"\n", a...)
+	}
+}

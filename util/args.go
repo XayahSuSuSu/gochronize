@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	history   *History
-	repoIndex = -1
-	Errors    []Err
+	history       *History
+	repoIndex     = -1
+	Errors        []Err
+	SimplifiedLog bool
 )
 
 func ParseArgs(args Args) {
@@ -21,13 +22,12 @@ func ParseArgs(args Args) {
 
 		// Parse config
 		config := ReadFromConfig(args.Config)
-		history = ReadFromHistory(args.History)
 
 		// Redirect log to file
 		if config.LogToFile {
 
 			// Create log dir
-			logDir := "log"
+			logDir := config.LogDir
 			err := os.MkdirAll(logDir, os.ModePerm)
 			if err != nil {
 				Fprintfln("* err: Failed to mkdir: %s, %v", logDir, err)
@@ -61,6 +61,10 @@ func ParseArgs(args Args) {
 			os.Stderr = logFile
 		}
 
+		SimplifiedLog = config.SimplifiedLog
+		Printfln("Time: %s", time.Now().Format("2006-01-02 15:04:05"))
+		history = ReadFromHistory(args.History)
+
 		// Get http client
 		httpClient := GetHttpClient(config.ProxyHttp, config.Token, config.Timeout)
 
@@ -79,8 +83,12 @@ func ParseArgs(args Args) {
 			}
 
 			Printfln("********************************************")
-			Printfln("* user: %s", target.User)
-			Printfln("* repo: %s", target.Repo)
+			if target.Url != "" {
+				Printfln("* url: %s", target.Url)
+			} else {
+				Printfln("* user: %s", target.User)
+				Printfln("* repo: %s", target.Repo)
+			}
 			Printfln("* sync: %s", target.Sync)
 			Printfln("********************************************")
 
@@ -179,7 +187,7 @@ func syncLatestPrerelease(client *http.Client, target *Target, config *Config, a
 	currentPage := 1
 	for currentPage != -1 {
 		isSuccess := false
-		Printfln("* page: %d", currentPage)
+		SimplifiedPrintfln("* page: %d", currentPage)
 		var releases []Release
 		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
 		if len(releases) >= 1 {
@@ -227,9 +235,10 @@ func syncLatest(client *http.Client, target *Target, config *Config, args *Args)
 
 func syncFromLatestLocal(client *http.Client, target *Target, config *Config, args *Args) error {
 	var mErr error = nil
+	newCount := 0
 	currentPage := 1
 	for currentPage != -1 {
-		Printfln("* page: %d", currentPage)
+		SimplifiedPrintfln("* page: %d", currentPage)
 		var releases []Release
 		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
 		if len(releases) >= 1 {
@@ -254,26 +263,32 @@ func syncFromLatestLocal(client *http.Client, target *Target, config *Config, ar
 				switch target.Sync {
 				case SyncReleaseFromLatestLocal:
 					if release.Prerelease {
-						Printfln("* info: This release is a prerelease, skip.")
+						SimplifiedPrintfln("* info: This release is a prerelease, skip.")
 						continue
 					}
 				case SyncPrereleaseFromLatestLocal:
 					if !release.Prerelease {
-						Printfln("* info: This release is not a prerelease, skip.")
+						SimplifiedPrintfln("* info: This release is not a prerelease, skip.")
 						continue
 					}
 				}
 
 				if latestReleaseId != release.Id {
-					Printfln("* info: This release is newer than latest local release.")
-					Printfln("* info: Current release id: %d.", release.Id)
-					Printfln("* info: The latest local release id: %d.", latestReleaseId)
-					Printfln("* info: -1 means that there's no latest local release.")
+					newCount++
+					Printfln("%d. %s", newCount, release.Name)
+					SimplifiedPrintfln("* info: This release is newer than latest local release.")
+					SimplifiedPrintfln("* info: Current release id: %d.", release.Id)
+					SimplifiedPrintfln("* info: The latest local release id: %d.", latestReleaseId)
+					SimplifiedPrintfln("* info: -1 means that there's no latest local release.")
 					err := downloadRelease(client, &release, target, config, args)
 					if err != nil {
 						mErr = err
 					}
 				} else {
+					if newCount == 0 {
+						Printfln("* info: No newer releases found.")
+					}
+					Printfln("********************************************")
 					return mErr
 				}
 			}
@@ -282,6 +297,10 @@ func syncFromLatestLocal(client *http.Client, target *Target, config *Config, ar
 			mErr = fmt.Errorf("")
 		}
 	}
+	if newCount == 0 {
+		Printfln("* info: No newer releases found.")
+	}
+	Printfln("********************************************")
 	return mErr
 }
 
@@ -289,7 +308,7 @@ func syncAll(client *http.Client, target *Target, config *Config, args *Args) er
 	var mErr error = nil
 	currentPage := 1
 	for currentPage != -1 {
-		Printfln("* page: %d", currentPage)
+		SimplifiedPrintfln("* page: %d", currentPage)
 		var releases []Release
 		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
 		if len(releases) >= 1 {
@@ -362,10 +381,10 @@ func handleVars(old, fileName, repoName, tagName, releaseName, createdAtStr, upd
 
 func downloadRelease(client *http.Client, release *Release, target *Target, config *Config, args *Args) error {
 	if release != nil {
-		Printfln("********************************************")
-		Printfln("* release: %s", release.Name)
-		Printfln("* tag: %s", release.TagName)
-		Printfln("* exclusion: [%s]", strings.Join(target.Exclusion, ", "))
+		SimplifiedPrintfln("********************************************")
+		SimplifiedPrintfln("* release: %s", release.Name)
+		SimplifiedPrintfln("* tag: %s", release.TagName)
+		SimplifiedPrintfln("* exclusion: [%s]", strings.Join(target.Exclusion, ", "))
 
 		historyRelease := HistoryRelease{Name: release.Name, TagName: release.TagName}
 		historyReleaseIndex := -1
@@ -392,7 +411,7 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			parentDir = handleVars(parentDir, name, target.Repo, release.TagName, release.Name, asset.CreatedAt, asset.UpdatedAt, config.TimeFormat)
 			parentDir = strings.TrimSuffix(parentDir, "/")
 
-			Printfln("* info: Trying to create: %s.", parentDir)
+			SimplifiedPrintfln("* info: Trying to create: %s.", parentDir)
 			err := os.MkdirAll(parentDir, os.ModePerm)
 			if err != nil {
 				return err
@@ -407,10 +426,10 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			for _, s := range target.Exclusion {
 				matched, err := MatchString(name, s)
 				if err != nil {
-					Printfln("* info: \"%s\" Not matched: \"%s\", continue.", s, name)
+					SimplifiedPrintfln("* info: \"%s\" Not matched: \"%s\", continue.", s, name)
 				}
 				if matched {
-					Printfln("* info: \"%s\" Matched: \"%s\", skip.", s, name)
+					SimplifiedPrintfln("* info: \"%s\" Matched: \"%s\", skip.", s, name)
 					skip = true
 				}
 			}
@@ -435,9 +454,9 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			}
 
 			if historyAssetIndex != -1 && (historyAsset.CreatedAt != asset.CreatedAt || historyAsset.UpdatedAt != asset.UpdatedAt) {
-				Fprintfln("%s has new update!", historyAsset.Name)
-				Fprintfln("Old: name: %s, url: %s, created at: %s, updated at: %s, parent dir: %s, file name: %s.", historyAsset.Name, historyAsset.BrowserDownloadURL, historyAsset.CreatedAt, historyAsset.UpdatedAt, historyAsset.ParentDir, historyAsset.FileName)
-				Fprintfln("New: name: %s, url: %s, created at: %s, updated at: %s, parent dir: %s, file name: %s.", asset.Name, asset.BrowserDownloadURL, asset.CreatedAt, asset.UpdatedAt, parentDir, fileName)
+				SimplifiedPrintfln("%s has new update!", historyAsset.Name)
+				SimplifiedPrintfln("Old: name: %s, url: %s, created at: %s, updated at: %s, parent dir: %s, file name: %s.", historyAsset.Name, historyAsset.BrowserDownloadURL, historyAsset.CreatedAt, historyAsset.UpdatedAt, historyAsset.ParentDir, historyAsset.FileName)
+				SimplifiedPrintfln("New: name: %s, url: %s, created at: %s, updated at: %s, parent dir: %s, file name: %s.", asset.Name, asset.BrowserDownloadURL, asset.CreatedAt, asset.UpdatedAt, parentDir, fileName)
 				historyAsset.CreatedAt = asset.CreatedAt
 				historyAsset.UpdatedAt = asset.UpdatedAt
 			}
@@ -446,7 +465,7 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 				historyRelease.Assets = append(historyRelease.Assets, historyAsset)
 			} else {
 				historyRelease.Assets[historyAssetIndex] = historyAsset
-				Printfln("%s has already been in history config.", historyAsset.Name)
+				SimplifiedPrintfln("%s has already been in history config.", historyAsset.Name)
 				if !target.Overwrite {
 					continue
 				}
@@ -456,11 +475,11 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 				count := config.Retries
 				for count > 0 {
 					dst := fmt.Sprintf("%s/%s", parentDir, fileName)
-					Printfln("* info: Download: %s to %s.", name, dst)
+					SimplifiedPrintfln("* info: Download: %s to %s.", name, dst)
 					err := Download(client, url, dst)
 					if err != nil {
 						Fprintfln("%v", err)
-						Printfln("* info: Retry: %d", config.Retries-count+1)
+						SimplifiedPrintfln("* info: Retry: %d", config.Retries-count+1)
 						count--
 						if count == 0 {
 							msg := fmt.Sprintf("* err: Failed to download %s within %d times, trying to delete tmp file: %s.", name, config.Retries, dst)
@@ -489,6 +508,6 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 		return fmt.Errorf("failed to get the latest release")
 	}
 
-	Printfln("********************************************")
+	SimplifiedPrintfln("********************************************")
 	return nil
 }

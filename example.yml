@@ -3,7 +3,9 @@ token: "" # "GitHub" -> "Settings" -> "Developer settings" -> "Personal access t
 timeout: 300
 retries: 3
 time_format: "2006-01-02" # Format of ${created_at} and ${updated_at}, Ref: https://pkg.go.dev/time#example-Time.Format
-log_to_file: true # Redirect log to file
+simplified_log: false
+log_to_file: false # Redirect log to file
+log_dir: "logs" # Parent folder of logs
 max_log_file: 3   # Max log files
 
 # Available vars:
@@ -31,12 +33,6 @@ max_log_file: 3   # Max log files
 #   - ${updated_at} or "${updated_at(your_regex)[your_regex_group_index]}"
 
 targets:
-  - user: "XayahSuSuSu"
-    repo: "Android-DataBackup"
-    sync: "${latest_release}"
-    file_name: "${file_name(.*)[0]}"
-    overwrite: true
-
   - url: "https://github.com/gkd-kit/gkd" # Url has higher priority than user/repo
     sync: "${from_latest_local}" # Vars or specified tag name.
     parent_dir: "./repos/${repo_name}/${tag_name}" # Root dir path. Set as "./repos/${repo_name}/${tag_name}" if left with "".

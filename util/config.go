@@ -18,13 +18,15 @@ type Target struct {
 }
 
 type Config struct {
-	ProxyHttp  string `yaml:"proxy_http"`
-	Token      string `yaml:"token"`
-	Timeout    int    `yaml:"timeout"`
-	Retries    int    `yaml:"retries"`
-	TimeFormat string `yaml:"time_format"`
-	LogToFile  bool   `yaml:"log_to_file"`
-	MaxLogFile int    `yaml:"max_log_file"`
+	ProxyHttp     string `yaml:"proxy_http"`
+	Token         string `yaml:"token"`
+	Timeout       int    `yaml:"timeout"`
+	Retries       int    `yaml:"retries"`
+	TimeFormat    string `yaml:"time_format"`
+	SimplifiedLog bool   `yaml:"simplified_log"`
+	LogToFile     bool   `yaml:"log_to_file"`
+	LogDir        string `yaml:"log_dir"`
+	MaxLogFile    int    `yaml:"max_log_file"`
 
 	Targets []Target `yaml:"targets"`
 }
