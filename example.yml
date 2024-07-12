@@ -33,9 +33,14 @@ max_log_file: 3   # Max log files
 #   - ${updated_at} or "${updated_at(your_regex)[your_regex_group_index]}"
 
 targets:
-  - url: "https://github.com/gkd-kit/gkd" # Url has higher priority than user/repo
+  - url: "https://github.com/floccusaddon/floccus" # Url has higher priority than user/repo
     sync: "${from_latest_local}" # Vars or specified tag name.
     parent_dir: "./repos/${repo_name}/${tag_name}" # Root dir path. Set as "./repos/${repo_name}/${tag_name}" if left with "".
     file_name: "${file_name}" # Repo dir name. Set as "${file_name}" if left with "".
-    exclusion: [ "output.*" ] # Exclude file name, support regex.
+    exclusion: [ ".*apk", ".*crx", ".*xpi" ] # Exclude file name, support regex.
     overwrite: false # Overwrite or skip file if there's a record in history config.
+    categories:
+      - key: "chrome" # Match keyword, support regex.
+        parent_dir: "./repos/${repo_name}/${tag_name}/chrome" # Matched file parent path.
+      - key: "firefox"
+        parent_dir: "./repos/${repo_name}/${tag_name}/firefox"

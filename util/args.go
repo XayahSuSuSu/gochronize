@@ -404,6 +404,15 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			name := asset.Name
 			fileName := target.FileName
 			parentDir := target.ParentDir
+			var categories []Category
+			for _, v := range target.Categories {
+				categories = append(categories, v)
+			}
+
+			if fileName == "" {
+				fileName = FileName
+			}
+			fileName = handleVars(fileName, name, target.Repo, release.TagName, release.Name, asset.CreatedAt, asset.UpdatedAt, config.TimeFormat)
 
 			if parentDir == "" {
 				parentDir = fmt.Sprintf("./repos/%s/%s", RepoName, TagName)
@@ -411,16 +420,22 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			parentDir = handleVars(parentDir, name, target.Repo, release.TagName, release.Name, asset.CreatedAt, asset.UpdatedAt, config.TimeFormat)
 			parentDir = strings.TrimSuffix(parentDir, "/")
 
-			SimplifiedPrintfln("* info: Trying to create: %s.", parentDir)
-			err := os.MkdirAll(parentDir, os.ModePerm)
-			if err != nil {
-				return err
-			}
+			for i := range categories {
+				if categories[i].ParentDir == "" {
+					categories[i].ParentDir = fmt.Sprintf("./repos/%s/%s", RepoName, TagName)
+				}
+				categories[i].ParentDir = handleVars(categories[i].ParentDir, name, target.Repo, release.TagName, release.Name, asset.CreatedAt, asset.UpdatedAt, config.TimeFormat)
+				categories[i].ParentDir = strings.TrimSuffix(categories[i].ParentDir, "/")
 
-			if fileName == "" {
-				fileName = FileName
+				matched, err := MatchString(fileName, categories[i].Key)
+				if err != nil {
+					SimplifiedPrintfln("* info: \"%s\" Not matched: \"%s\", continue.", categories[i].Key, fileName)
+				}
+				if matched {
+					SimplifiedPrintfln("* info: \"%s\" Matched: \"%s\", skip.", categories[i].Key, fileName)
+					parentDir = categories[i].ParentDir
+				}
 			}
-			fileName = handleVars(fileName, name, target.Repo, release.TagName, release.Name, asset.CreatedAt, asset.UpdatedAt, config.TimeFormat)
 
 			skip := false
 			for _, s := range target.Exclusion {
@@ -474,9 +489,14 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 			if !args.DryRun {
 				count := config.Retries
 				for count > 0 {
+					SimplifiedPrintfln("* info: Trying to create: %s.", parentDir)
+					err := os.MkdirAll(parentDir, os.ModePerm)
+					if err != nil {
+						return err
+					}
 					dst := fmt.Sprintf("%s/%s", parentDir, fileName)
 					SimplifiedPrintfln("* info: Download: %s to %s.", name, dst)
-					err := Download(client, url, dst)
+					err = Download(client, url, dst)
 					if err != nil {
 						Fprintfln("%v", err)
 						SimplifiedPrintfln("* info: Retry: %d", config.Retries-count+1)

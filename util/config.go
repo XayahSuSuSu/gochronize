@@ -7,14 +7,20 @@ import (
 )
 
 type Target struct {
-	Url       string   `yaml:"url"`
-	User      string   `yaml:"user"`
-	Repo      string   `yaml:"repo"`
-	Sync      string   `yaml:"sync"`
-	Overwrite bool     `yaml:"overwrite"`
-	ParentDir string   `yaml:"parent_dir"`
-	FileName  string   `yaml:"file_name"`
-	Exclusion []string `yaml:"exclusion"`
+	Url        string     `yaml:"url"`
+	User       string     `yaml:"user"`
+	Repo       string     `yaml:"repo"`
+	Sync       string     `yaml:"sync"`
+	Overwrite  bool       `yaml:"overwrite"`
+	ParentDir  string     `yaml:"parent_dir"`
+	FileName   string     `yaml:"file_name"`
+	Exclusion  []string   `yaml:"exclusion"`
+	Categories []Category `yaml:"categories"`
+}
+
+type Category struct {
+	Key       string `yaml:"key"`
+	ParentDir string `yaml:"parent_dir"`
 }
 
 type Config struct {
