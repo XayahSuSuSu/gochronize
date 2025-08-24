@@ -1,9 +1,10 @@
 package util
 
 import (
-	"gopkg.in/yaml.v3"
 	"os"
 	"sort"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Target struct {
@@ -11,6 +12,7 @@ type Target struct {
 	User       string     `yaml:"user"`
 	Repo       string     `yaml:"repo"`
 	Sync       string     `yaml:"sync"`
+	MaxCount   int        `yaml:"max_count"`
 	Overwrite  bool       `yaml:"overwrite"`
 	ParentDir  string     `yaml:"parent_dir"`
 	FileName   string     `yaml:"file_name"`
@@ -100,8 +102,7 @@ func ReadFromHistory(path string) *History {
 	return &history
 }
 
-func SaveHistoryToYaml(name string, history *History) error {
-	// Sort releases by id.
+func sortHistory() {
 	for i, repo := range history.Repos {
 		releases := repo.Releases
 		sort.Slice(releases, func(i, j int) bool {
@@ -109,6 +110,11 @@ func SaveHistoryToYaml(name string, history *History) error {
 		})
 		history.Repos[i].Releases = releases
 	}
+}
+
+func SaveHistoryToYaml(name string, history *History) error {
+	// Sort releases by id.
+	sortHistory()
 
 	data, err := yaml.Marshal(&history)
 	if err != nil {

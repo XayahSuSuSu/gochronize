@@ -90,6 +90,7 @@ func ParseArgs(args Args) {
 				Printfln("* repo: %s", target.Repo)
 			}
 			Printfln("* sync: %s", target.Sync)
+			Printfln("* maxCount: %d", target.MaxCount)
 			Printfln("********************************************")
 
 			repoIndex = -1
@@ -109,6 +110,12 @@ func ParseArgs(args Args) {
 			switch target.Sync {
 			case SyncLatestRelease:
 				err := syncLatestRelease(httpClient, &target, config, &args)
+				if err != nil {
+					exitCode = ErrorDownload
+					continue
+				}
+			case SyncLatestReleases:
+				err := syncLatestReleases(httpClient, &target, config, &args)
 				if err != nil {
 					exitCode = ErrorDownload
 					continue
@@ -180,6 +187,92 @@ func syncLatestRelease(client *http.Client, target *Target, config *Config, args
 	latestRelease := GetLatestRelease(client, target.User, target.Repo)
 	err := downloadRelease(client, latestRelease, target, config, args)
 	return err
+}
+
+func syncLatestReleases(client *http.Client, target *Target, config *Config, args *Args) error {
+	var mErr error = nil
+	var localRepo *HistoryRepo = nil
+	for _, r := range history.Repos {
+		if r.User == target.User && r.Repo == target.Repo {
+			localRepo = &r
+			break
+		}
+	}
+	count := 0
+	currentPage := 1
+	for currentPage != -1 {
+		if target.MaxCount != -1 && target.MaxCount <= count {
+			break
+		}
+		SimplifiedPrintfln("* page: %d", currentPage)
+		var releases []Release
+		releases, currentPage = GetRelease(client, target.User, target.Repo, currentPage)
+		if len(releases) >= 1 {
+			for _, release := range releases {
+				if target.MaxCount != -1 && target.MaxCount <= count {
+					SimplifiedPrintfln("* info: Reach max count: %d.", target.MaxCount)
+					break
+				}
+
+				var isExist = false
+				if localRepo != nil {
+					for _, r := range localRepo.Releases {
+						if release.Id == r.Id {
+							isExist = true
+						}
+					}
+				}
+
+				switch target.Sync {
+				case SyncLatestReleases:
+					if release.Prerelease {
+						SimplifiedPrintfln("* info: This release is a prerelease, skip.")
+						continue
+					}
+				}
+
+				if !isExist {
+					err := downloadRelease(client, &release, target, config, args)
+					if err != nil {
+						mErr = err
+					}
+				} else {
+					Printfln("* info: This release is synchronized, skip.")
+					Printfln("********************************************")
+				}
+				count++
+			}
+		} else {
+			Fprintfln("* err: There's nothing to download.")
+			mErr = fmt.Errorf("")
+		}
+	}
+
+	sortHistory()
+	if localRepo != nil {
+		if len(localRepo.Releases) > target.MaxCount {
+			history.Repos[repoIndex].Releases = localRepo.Releases[:target.MaxCount]
+
+			outdatedReleases := localRepo.Releases[target.MaxCount:]
+			for i := range outdatedReleases {
+				for j := range outdatedReleases[i].Assets {
+					dir := outdatedReleases[i].Assets[j].ParentDir
+					exists, _ := PathExists(dir)
+					if exists {
+						err := os.RemoveAll(dir)
+						if err != nil {
+							Fprintfln("* err: Failed delete: %s.", dir)
+						} else {
+							Fprintfln("Delete: %s", dir)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	Printfln("********************************************")
+	return mErr
 }
 
 func syncLatestPrerelease(client *http.Client, target *Target, config *Config, args *Args) error {
@@ -530,4 +623,15 @@ func downloadRelease(client *http.Client, release *Release, target *Target, conf
 
 	SimplifiedPrintfln("********************************************")
 	return nil
+}
+
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

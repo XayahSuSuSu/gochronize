@@ -11,6 +11,7 @@ const (
 const (
 	SyncLatest                    = "${latest}"
 	SyncLatestRelease             = "${latest_release}"
+	SyncLatestReleases            = "${latest_releases}"
 	SyncLatestPrerelease          = "${latest_prerelease}"
 	SyncFromLatestLocal           = "${from_latest_local}"
 	SyncReleaseFromLatestLocal    = "${release_from_latest_local}"
